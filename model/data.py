@@ -85,41 +85,44 @@ class SQuAD():
 
         with open(path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-            data = data['data']
+            if 'data' in data:
+                data = [c for d in data['data'] for c in d['paragraphs']]
 
-            for article in data:
-                for paragraph in article['paragraphs']:
-                    context = paragraph['context']
-                    tokens = word_tokenize(context)
-                    for qa in paragraph['qas']:
+            for paragraph in data:
+                context = paragraph['context']
+                tokens = word_tokenize(context)
+                for qa in paragraph['qas']:
+                    question = qa['question']
+                    if 'id' in qa:
                         id = qa['id']
-                        question = qa['question']
-                        for ans in qa['answers']:
-                            answer = ans['text']
-                            s_idx = ans['answer_start']
-                            e_idx = s_idx + len(answer)
+                    else:
+                        id = hash(question)
+                    for ans in qa['answers']:
+                        answer = ans['text']
+                        s_idx = ans['answer_start']
+                        e_idx = s_idx + len(answer)
 
-                            l = 0
-                            s_found = False
-                            for i, t in enumerate(tokens):
-                                while l < len(context):
-                                    if context[l] in abnormals:
-                                        l += 1
-                                    else:
-                                        break
-                                # exceptional cases
-                                if t[0] == '"' and context[l:l + 2] == '\'\'':
-                                    t = '\'\'' + t[1:]
-                                elif t == '"' and context[l:l + 2] == '\'\'':
-                                    t = '\'\''
-
-                                l += len(t)
-                                if l > s_idx and s_found == False:
-                                    s_idx = i
-                                    s_found = True
-                                if l >= e_idx:
-                                    e_idx = i
+                        l = 0
+                        s_found = False
+                        for i, t in enumerate(tokens):
+                            while l < len(context):
+                                if context[l] in abnormals:
+                                    l += 1
+                                else:
                                     break
+                            # exceptional cases
+                            if t[0] == '"' and context[l:l + 2] == '\'\'':
+                                t = '\'\'' + t[1:]
+                            elif t == '"' and context[l:l + 2] == '\'\'':
+                                t = '\'\''
+
+                            l += len(t)
+                            if l > s_idx and s_found == False:
+                                s_idx = i
+                                s_found = True
+                            if l >= e_idx:
+                                e_idx = i
+                                break
 
                             dump.append(dict([('id', id),
                                               ('context', context),
